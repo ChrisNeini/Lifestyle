@@ -164,13 +164,13 @@ label{font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:4px;disp
    → Neues Projekt → Realtime Database aktivieren → App registrieren
    ============================================================ */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBUji0zkQhAowaTdhY8PG98tBfxXCF_5Cg",
-  authDomain: "freizeit-community.firebaseapp.com",
-  databaseURL: "https://freizeit-community-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "freizeit-community",
-  storageBucket: "freizeit-community.firebasestorage.app",
-  messagingSenderId: "831257138592",
-  appId: "1:831257138592:web:9a3bd145e316d543bac0c5"
+  apiKey: "DEIN_API_KEY",
+  authDomain: "DEIN_PROJEKT.firebaseapp.com",
+  databaseURL: "https://DEIN_PROJEKT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "DEIN_PROJEKT",
+  storageBucket: "DEIN_PROJEKT.appspot.com",
+  messagingSenderId: "DEINE_SENDER_ID",
+  appId: "DEINE_APP_ID"
 };
 
 /* ============================================================
@@ -499,6 +499,7 @@ function renderActivity(a){
         ${a.closed ? `<span class="tag" style="background:#fef3c7;color:#92400e">✅ Fertig</span>` : ""}
       </div>
       <div class="flex" style="gap:5px">
+        <button class="btn-sm btn-secondary act-edit" data-id="${a.id}" title="Bearbeiten">✏️</button>
         <button class="btn-sm btn-danger act-del" data-id="${a.id}" title="Löschen">🗑</button>
         ${!a.closed
           ? `<button class="btn-sm btn-success act-close" data-id="${a.id}">✓ Erledigt</button>`
@@ -518,10 +519,16 @@ function renderActivity(a){
     ${a.imgData ? `<div class="img-wrapper"><img src="${a.imgData}" class="img-thumb-small" alt="Bild"></div>` : ""}
 
     <!-- Author & date -->
-    <div class="flex" style="margin:8px 0 4px">
+    <div class="flex" style="margin:8px 0 2px">
       ${renderUserBadge(a.userName, a.userColor)}
       <span style="font-size:.73rem;color:var(--muted)">${fmtDate(a.ts)}</span>
     </div>
+    ${a.editedAt ? `<div class="flex" style="margin-bottom:4px">
+      <span style="font-size:.7rem;color:var(--muted);font-style:italic">
+        ✏️ Bearbeitet ${fmtDate(a.editedAt)}
+        ${a.editedBy ? ` von ${renderUserBadge(a.editedBy, a.editedByColor||"#9ca3af")}` : "(Ersteller)"}
+      </span>
+    </div>` : ""}
 
     <!-- Rating bar (if rated) -->
     ${a.closed && a.rating!=null ? `
@@ -566,10 +573,11 @@ function renderActivity(a){
 /* ---- NEW ACTIVITY MODAL ---- */
 function renderNewModal(){
   const na = S.newAct;
+  const isEdit = !!na.editId;
   const cats = Object.values(S.categories);
   return `<div class="modal-bg" id="modal-bg">
   <div class="modal">
-    <h2>✨ Neuer Freizeittipp</h2>
+    <h2>${isEdit ? "✏️ Eintrag bearbeiten" : "✨ Neuer Freizeittipp"}</h2>
 
     <div class="form-row">
       <label>Titel *</label>
@@ -596,26 +604,28 @@ function renderNewModal(){
 
     <div class="form-row">
       <label>📷 Bild (Drag & Drop oder klicken)</label>
-      <div class="img-dropzone" id="dropzone" ${S.dragOver?"style='border-color:#667eea;background:#f5f3ff'":""}>
+      <div class="img-dropzone" id="dropzone">
         <div class="dz-icon">📷</div>
         <span>Bild hierher ziehen oder klicken zum Auswählen</span>
         <span style="font-size:.72rem;opacity:.7">JPG, PNG, WebP · wird automatisch verkleinert</span>
         <input type="file" id="na-img-file" accept="image/*">
       </div>
-      ${na.imgData ? `
-        <div class="img-wrapper" style="margin-top:8px">
-          <img src="${na.imgData}" class="img-thumb">
+      <div id="img-preview-area" style="margin-top:8px">
+        ${na.imgData ? `<div class="img-wrapper">
+          <img src="${na.imgData}" class="img-thumb" id="img-preview-thumb">
           <button class="img-remove" id="img-clear" title="Bild entfernen">✕</button>
         </div>` : ""}
+      </div>
     </div>
 
     <div class="flex" style="margin-top:18px">
-      <button class="btn btn-primary" id="na-save" style="flex:1;justify-content:center">💾 Speichern</button>
+      <button class="btn btn-primary" id="na-save" style="flex:1;justify-content:center">
+        💾 ${isEdit ? "Änderungen speichern" : "Speichern"}
+      </button>
       <button class="btn-sm btn-secondary" id="na-cancel">Abbrechen</button>
     </div>
   </div></div>`;
 }
-
 /* ---- PROFILE MODAL ---- */
 function renderProfileModal(){
   const u = S.user;
@@ -747,6 +757,33 @@ function bindApp(){
       toast("🗑 Gelöscht");
     });
   });
+  qa(".act-edit").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const a=S.activities[btn.dataset.id];
+      if(!a)return;
+      S.newAct={
+        editId: a.id,
+        title: a.title,
+        desc: a.desc||"",
+        cat: a.cat,
+        link: a.link||"",
+        imgData: a.imgData||""
+      };
+      S.modal="new";
+      render();
+    });
+  });
+  qa(".act-edit").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const a=S.activities[btn.dataset.id];
+      if(!a)return;
+      S.newAct={
+        editId:a.id, title:a.title, desc:a.desc||"",
+        cat:a.cat, link:a.link||"", imgData:a.imgData||""
+      };
+      S.modal="new"; render();
+    });
+  });
   qa(".act-close").forEach(btn=>{
     btn.addEventListener("click",async()=>{
       const a=S.activities[btn.dataset.id];
@@ -796,7 +833,21 @@ function bindApp(){
     q("#na-cancel")?.addEventListener("click",()=>{S.modal=null;render();});
     q("#modal-bg")?.addEventListener("click",e=>{if(e.target.id==="modal-bg"){S.modal=null;render();}});
 
-    // Dropzone drag & drop
+    // Dropzone drag & drop — NO full re-render to preserve field values
+    function updateImgPreview(data){
+      S.newAct.imgData=data;
+      const area=q("#img-preview-area");
+      if(!area)return;
+      if(data){
+        area.innerHTML=`<div class="img-wrapper">
+          <img src="${data}" class="img-thumb" id="img-preview-thumb">
+          <button class="img-remove" id="img-clear" title="Bild entfernen">✕</button>
+        </div>`;
+        area.querySelector("#img-clear")?.addEventListener("click",()=>updateImgPreview(""));
+      } else {
+        area.innerHTML="";
+      }
+    }
     const dz=q("#dropzone");
     if(dz){
       dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("dragover");});
@@ -806,15 +857,15 @@ function bindApp(){
         const file=e.dataTransfer.files[0];
         if(file&&file.type.startsWith("image/")){
           const data=await resizeImage(file);
-          S.newAct.imgData=data; render();
+          updateImgPreview(data);
         }
       });
     }
     q("#na-img-file")?.addEventListener("change",async e=>{
       const file=e.target.files[0];
-      if(file){const data=await resizeImage(file);S.newAct.imgData=data;render();}
+      if(file){const data=await resizeImage(file);updateImgPreview(data);}
     });
-    q("#img-clear")?.addEventListener("click",()=>{S.newAct.imgData="";render();});
+    q("#img-clear")?.addEventListener("click",()=>updateImgPreview(""));
 
     q("#na-save")?.addEventListener("click",async()=>{
       const user=S.user;
@@ -824,15 +875,35 @@ function bindApp(){
       const link=q("#na-link")?.value?.trim();
       if(!title){toast("Bitte Titel eingeben!");return;}
       if(!cat){toast("Bitte Kategorie wählen!");return;}
-      const id=uid();
-      const act={
-        id, title, desc:desc||"", cat, link:link||"",
-        imgData:S.newAct.imgData||"",
-        uid:user?.id||"anon", userName:user?.name||"Anon", userColor:user?.color||"#9ca3af",
-        hearts:{}, comments:{}, ts:Date.now(), closed:false
-      };
-      await dbSet("activities/"+id, act);
-      toast("✨ Tipp gespeichert!");
+      const isEdit=!!S.newAct.editId;
+      if(isEdit){
+        // EDIT existing activity
+        const existing=S.activities[S.newAct.editId];
+        if(!existing){toast("Eintrag nicht gefunden!");return;}
+        const wasEdited = existing.uid !== (user?.id||"anon");
+        const updatedAct={
+          ...existing,
+          title, desc:desc||"", cat, link:link||"",
+          imgData:S.newAct.imgData||"",
+          editedAt:Date.now(),
+          editedBy: wasEdited ? (user?.name||"Anon") : null,
+          editedByColor: wasEdited ? (user?.color||"#9ca3af") : null,
+        };
+        await dbSet("activities/"+existing.id, updatedAct);
+        toast("✏️ Eintrag aktualisiert!");
+      } else {
+        // NEW activity
+        const id=uid();
+        const act={
+          id, title, desc:desc||"", cat, link:link||"",
+          imgData:S.newAct.imgData||"",
+          uid:user?.id||"anon", userName:user?.name||"Anon", userColor:user?.color||"#9ca3af",
+          hearts:{}, comments:{}, ts:Date.now(), closed:false,
+          editedAt:null, editedBy:null, editedByColor:null
+        };
+        await dbSet("activities/"+id, act);
+        toast("✨ Tipp gespeichert!");
+      }
       S.modal=null; render();
     });
   }
